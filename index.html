@@ -3,16 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>隱形富豪的網站</title>
+    <title>隱形</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f4f8; }
-        h1 { color: #2c3e50; }
-        p { font-size: 1.2em; color: #34495e; }
+        body {
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+            color: #333;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #0277bd;
+            margin-bottom: 10px;
+        }
+        .today {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .holiday { background: #fff3e0; color: #e65100; }
+        .normal { background: #e8f5e9; color: #2e7d32; }
+        .list {
+            margin: 40px auto;
+            max-width: 600px;
+            text-align: left;
+        }
+        .list h2 {
+            color: #01579b;
+            border-bottom: 2px solid #81d4fa;
+            padding-bottom: 8px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: white;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <h1>歡迎來到隱形富豪的 GitHub Pages 網站！</h1>
-    <p>這是我的第一個免費網站，2026 年 2 月上線～</p>
-    <p>現在是：February 05, 2026</p>
+    <h1>假期查詢</h1>
+    <p>從 holiday.json 載入的假期列表</p>
+
+    <div id="today-status" class="today">載入中...</div>
+
+    <div class="list">
+        <h2>最近 5 個假期</h2>
+        <ul id="recent-holidays"></ul>
+
+        <h2>未來 5 個假期</h2>
+        <ul id="future-holidays"></ul>
+    </div>
+
+    <script>
+        // 載入 holiday.json
+        fetch('holiday.json')
+            .then(response => {
+                if (!response.ok) throw new Error('無法載入 holiday.json');
+                return response.text();
+            })
+            .then(text => {
+                // 因為你的 holiday.json 是純日期列表（每行一筆），轉成陣列
+                const holidays = text.trim().split('\n').map(date => date.trim()).filter(date => date);
+
+                // 轉成 Date 物件並排序（確保日期順序）
+                const holidayDates = holidays.map(dateStr => {
+                    const [year, month, day] = dateStr.split('/');
+                    return new Date(year, month - 1, day);
+                }).sort((a, b) => a - b);
+
+                // 取得今天日期（UTC+8 澳門時間）
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // 只比對日期
+
+                // 判斷今天是否假期
+                const isHolidayToday = holidayDates.some(hd => hd.getTime() === today.getTime());
+                const statusDiv = document.getElementById('today-status');
+                statusDiv.textContent = isHolidayToday ? '今天是假期！放鬆一下吧～' : '今天不是假期，继续努力！';
+                statusDiv.className = 'today ' + (isHolidayToday ? 'holiday' : 'normal');
+
+                // 顯示最近 5 個已過或今天的假期
+                const recent = holidayDates
+                    .filter(hd => hd <= today)
+                    .slice(-5)
+                    .reverse(); // 從最近的開始
+
+                const recentList = document.getElementById('recent-holidays');
+                recent.forEach(date => {
+                    const daysAgo = Math.round((today - date) / (1000 * 60 * 60 * 24));
+                    const text = daysAgo === 0 ? '今天' : `${daysAgo} 天前`;
+                    const li = document.createElement('li');
+                    li.textContent = `${date.toLocaleDateString('zh-TW')} (${text})`;
+                    recentList.appendChild(li);
+                });
+
+                // 顯示未來 5 個假期
+                const future = holidayDates
+                    .filter(hd => hd > today)
+                    .slice(0, 5);
+
+                const futureList = document.getElementById('future-holidays');
+                future.forEach(date => {
+                    const daysLeft = Math.round((date - today) / (1000 * 60 * 60 * 24));
+                    const text = daysLeft === 0 ? '今天' : `還有 ${daysLeft} 天`;
+                    const li = document.createElement('li');
+                    li.textContent = `${date.toLocaleDateString('zh-TW')} (${text})`;
+                    futureList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('錯誤:', error);
+                document.getElementById('today-status').textContent = '載入假期資料失敗，請確認 holiday.json 存在且格式正確';
+                document.getElementById('today-status').className = 'today error';
+            });
+    </script>
 </body>
 </html>
